@@ -361,6 +361,13 @@ app.post('/api/upload-audio', upload.single('audio'), (req, res) => {
       return res.status(400).json({ error: 'Missing conversationId or userId' });
     }
 
+    // Ensure uploads directory exists
+    const uploadDir = path.join(__dirname, 'uploads');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+      console.log('Created uploads directory:', uploadDir);
+    }
+
     const fileInfo = {
       filename: req.file.filename,
       originalName: req.file.originalname,
@@ -381,7 +388,10 @@ app.post('/api/upload-audio', upload.single('audio'), (req, res) => {
     });
   } catch (error) {
     console.error('Upload error:', error);
-    res.status(500).json({ error: 'Failed to upload audio file' });
+    res.status(500).json({ 
+      error: 'Failed to upload audio file',
+      details: error.message 
+    });
   }
 });
 
