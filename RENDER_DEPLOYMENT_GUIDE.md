@@ -24,7 +24,7 @@ Since Railway's free tier only allows database deployments, we'll use Render.com
 3. Select repository: `jiahao-afterquery/conversation`
 4. Configure the service:
    - **Name**: `audio-platform-backend`
-   - **Root Directory**: `/server`
+   - **Root Directory**: `./server`
    - **Runtime**: `Node`
    - **Build Command**: `npm install`
    - **Start Command**: `npm start`
@@ -50,7 +50,7 @@ NODE_ENV=production
 1. Go to [Vercel.com](https://vercel.com)
 2. Click "New Project"
 3. Import your GitHub repository: `jiahao-afterquery/conversation`
-4. Set the root directory to `/client`
+4. Set the root directory to `./client`
 
 #### Step 2.2: Configure Environment Variables
 In Vercel dashboard, add:

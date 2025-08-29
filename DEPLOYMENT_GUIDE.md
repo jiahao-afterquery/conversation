@@ -28,7 +28,7 @@ Your code is already prepared for deployment with:
 3. Choose "Deploy from GitHub repo"
 4. Connect your GitHub account
 5. Select your repository
-6. Set the root directory to `/server`
+6. Set the root directory to `./server`
 
 #### Step 2.2: Configure Environment Variables
 In Railway dashboard, add these environment variables:
@@ -51,7 +51,7 @@ NODE_ENV=production
 1. Go to [Vercel.com](https://vercel.com)
 2. Click "New Project"
 3. Import your GitHub repository
-4. Set the root directory to `/client`
+4. Set the root directory to `./client`
 
 #### Step 3.2: Configure Environment Variables
 In Vercel dashboard, add:
