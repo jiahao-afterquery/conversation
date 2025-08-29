@@ -2,7 +2,7 @@ const admin = require('firebase-admin');
 const fs = require('fs');
 const path = require('path');
 
-// Initialize Firebase Admin SDK
+// Initialize Firebase Admin SDK with multiple fallback methods
 const initializeFirebase = () => {
   try {
     // Check if Firebase is already initialized
@@ -16,7 +16,7 @@ const initializeFirebase = () => {
 
     let app;
 
-    // Method 1: Try using service account JSON file (most reliable)
+    // Method 1: Try using service account JSON file
     const serviceAccountPath = path.join(__dirname, 'firebase-service-account.json');
     if (fs.existsSync(serviceAccountPath)) {
       console.log('📁 Using service account JSON file');
@@ -26,9 +26,9 @@ const initializeFirebase = () => {
         storageBucket: process.env.FIREBASE_STORAGE_BUCKET
       });
     }
-    // Method 2: Fallback to environment variables
+    // Method 2: Try using environment variables
     else if (process.env.FIREBASE_PRIVATE_KEY) {
-      console.log('🔧 Using environment variables (fallback)');
+      console.log('🔧 Using environment variables');
       
       let privateKey = process.env.FIREBASE_PRIVATE_KEY;
       
@@ -58,9 +58,9 @@ const initializeFirebase = () => {
         storageBucket: process.env.FIREBASE_STORAGE_BUCKET
       });
     }
-    // Method 3: No Firebase available
+    // Method 3: Fallback to demo mode
     else {
-      console.log('⚠️ No Firebase credentials found, using local storage only');
+      console.log('⚠️ No Firebase credentials found, using demo mode');
       return null;
     }
 
