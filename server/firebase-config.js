@@ -8,6 +8,33 @@ const initializeFirebase = () => {
       return admin.apps[0];
     }
 
+    // Debug logging
+    console.log('🔍 Firebase Config Debug:');
+    console.log('Project ID:', process.env.FIREBASE_PROJECT_ID);
+    console.log('Storage Bucket:', process.env.FIREBASE_STORAGE_BUCKET);
+    console.log('Client Email:', process.env.FIREBASE_CLIENT_EMAIL);
+    console.log('Private Key ID:', process.env.FIREBASE_PRIVATE_KEY_ID);
+    console.log('Private Key Length:', process.env.FIREBASE_PRIVATE_KEY?.length);
+    console.log('Client ID:', process.env.FIREBASE_CLIENT_ID);
+    console.log('Client Cert URL:', process.env.FIREBASE_CLIENT_CERT_URL);
+
+    // Check if all required variables are present
+    const requiredVars = [
+      'FIREBASE_PROJECT_ID',
+      'FIREBASE_STORAGE_BUCKET', 
+      'FIREBASE_PRIVATE_KEY_ID',
+      'FIREBASE_PRIVATE_KEY',
+      'FIREBASE_CLIENT_EMAIL',
+      'FIREBASE_CLIENT_ID',
+      'FIREBASE_CLIENT_CERT_URL'
+    ];
+
+    const missingVars = requiredVars.filter(varName => !process.env[varName]);
+    if (missingVars.length > 0) {
+      console.error('❌ Missing Firebase environment variables:', missingVars);
+      return null;
+    }
+
     // Initialize with environment variables
     const serviceAccount = {
       type: "service_account",
@@ -22,6 +49,13 @@ const initializeFirebase = () => {
       client_x509_cert_url: process.env.FIREBASE_CLIENT_CERT_URL
     };
 
+    console.log('🔧 Service Account Config:', {
+      type: serviceAccount.type,
+      project_id: serviceAccount.project_id,
+      client_email: serviceAccount.client_email,
+      private_key_length: serviceAccount.private_key?.length
+    });
+
     const app = admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
       storageBucket: process.env.FIREBASE_STORAGE_BUCKET
@@ -31,6 +65,7 @@ const initializeFirebase = () => {
     return app;
   } catch (error) {
     console.error('❌ Firebase initialization failed:', error.message);
+    console.error('❌ Error details:', error);
     return null;
   }
 };
