@@ -516,6 +516,32 @@ app.get('/api/download/:filename', (req, res) => {
   }
 });
 
+// Regenerate signed URL for Firebase Storage file
+app.post('/api/regenerate-signed-url', async (req, res) => {
+  try {
+    const { filePath } = req.body;
+    
+    if (!filePath) {
+      return res.status(400).json({ error: 'File path is required' });
+    }
+    
+    if (!firebaseStorage.isAvailable()) {
+      return res.status(500).json({ error: 'Firebase Storage not available' });
+    }
+    
+    const signedUrl = await firebaseStorage.generateSignedUrl(filePath, 7 * 24 * 60); // 7 days
+    
+    if (!signedUrl) {
+      return res.status(404).json({ error: 'File not found in Firebase Storage' });
+    }
+    
+    res.json({ signedUrl });
+  } catch (error) {
+    console.error('Error regenerating signed URL:', error);
+    res.status(500).json({ error: 'Failed to regenerate signed URL' });
+  }
+});
+
 // Serve React app for all other routes
 app.get('*', (req, res) => {
   res.json({ message: 'Audio Collection Platform API Server' });

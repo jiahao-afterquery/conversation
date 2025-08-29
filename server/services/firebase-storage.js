@@ -45,10 +45,10 @@ class FirebaseStorage {
       
       console.log(`✅ File uploaded successfully: ${publicUrl}`);
       
-      // Generate a signed URL for secure access
+      // Generate a signed URL for secure access (7 days expiration)
       const [signedUrl] = await file.getSignedUrl({
         action: 'read',
-        expires: Date.now() + 24 * 60 * 60 * 1000 // 24 hours
+        expires: Date.now() + 7 * 24 * 60 * 60 * 1000 // 7 days
       });
       
       return {
@@ -57,7 +57,8 @@ class FirebaseStorage {
         size: file.metadata.size,
         downloadUrl: signedUrl,
         path: destination,
-        bucket: this.bucket.name
+        bucket: this.bucket.name,
+        signedUrl: signedUrl
       };
     } catch (error) {
       console.error('❌ Error uploading to Firebase Storage:', error);
@@ -101,12 +102,12 @@ class FirebaseStorage {
         prefix: `audio-files/${conversationId}/`
       });
 
-      // Generate signed URLs for each file
+      // Generate signed URLs for each file (7 days expiration)
       const filesWithUrls = await Promise.all(
         files.map(async (file) => {
           const [signedUrl] = await file.getSignedUrl({
             action: 'read',
-            expires: Date.now() + 24 * 60 * 60 * 1000 // 24 hours
+            expires: Date.now() + 7 * 24 * 60 * 60 * 1000 // 7 days
           });
           
           return {

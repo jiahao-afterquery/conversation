@@ -753,16 +753,28 @@ const Conversation = ({
                         </p>
                       </div>
                     </div>
-                                         <button
-                       onClick={() => {
-                         const API_BASE_URL = process.env.REACT_APP_SERVER_URL || '';
-                         const downloadUrl = `${API_BASE_URL}${file.downloadUrl}`;
-                         window.open(downloadUrl, '_blank');
-                       }}
-                       className="btn-secondary text-xs"
-                     >
-                       Download
-                     </button>
+                                                             <button
+                      onClick={async () => {
+                        try {
+                          // Check if it's a Firebase Storage URL (starts with https://)
+                          if (file.downloadUrl && file.downloadUrl.startsWith('https://')) {
+                            // Direct Firebase Storage URL
+                            window.open(file.downloadUrl, '_blank');
+                          } else {
+                            // Local server URL
+                            const API_BASE_URL = process.env.REACT_APP_SERVER_URL || '';
+                            const downloadUrl = `${API_BASE_URL}${file.downloadUrl}`;
+                            window.open(downloadUrl, '_blank');
+                          }
+                        } catch (error) {
+                          console.error('Download error:', error);
+                          alert('Failed to download file. Please try again.');
+                        }
+                      }}
+                      className="btn-secondary text-xs"
+                    >
+                      Download
+                    </button>
                   </div>
                 ))}
               </div>
