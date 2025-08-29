@@ -409,7 +409,8 @@ app.get('/api/conversation/:conversationId/files', (req, res) => {
           filename: file,
           size: stats.size,
           uploadTime: stats.mtime,
-          audioType: audioType
+          audioType: audioType,
+          downloadUrl: `/api/download/${file}`
         };
       });
 
@@ -417,6 +418,23 @@ app.get('/api/conversation/:conversationId/files', (req, res) => {
   } catch (error) {
     console.error('Error getting files:', error);
     res.status(500).json({ error: 'Failed to get conversation files' });
+  }
+});
+
+// Download a specific file
+app.get('/api/download/:filename', (req, res) => {
+  try {
+    const { filename } = req.params;
+    const filePath = path.join(__dirname, 'uploads', filename);
+    
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+    
+    res.download(filePath, filename);
+  } catch (error) {
+    console.error('Error downloading file:', error);
+    res.status(500).json({ error: 'Failed to download file' });
   }
 });
 

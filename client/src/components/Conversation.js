@@ -753,15 +753,16 @@ const Conversation = ({
                         </p>
                       </div>
                     </div>
-                    <button
-                      onClick={() => {
-                        // In a real app, you'd implement file download
-                        alert('Download functionality would be implemented here');
-                      }}
-                      className="btn-secondary text-xs"
-                    >
-                      Download
-                    </button>
+                                         <button
+                       onClick={() => {
+                         const API_BASE_URL = process.env.REACT_APP_SERVER_URL || '';
+                         const downloadUrl = `${API_BASE_URL}${file.downloadUrl}`;
+                         window.open(downloadUrl, '_blank');
+                       }}
+                       className="btn-secondary text-xs"
+                     >
+                       Download
+                     </button>
                   </div>
                 ))}
               </div>
