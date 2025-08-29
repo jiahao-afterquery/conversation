@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Users, MessageCircle, User, LogOut } from 'lucide-react';
 
-const UserList = ({ users, currentUser, onStartConversation, conversation }) => {
+const UserList = ({ users, currentUser, onStartConversation, conversation, onLeavePlatform }) => {
   const navigate = useNavigate();
 
   // Navigate to conversation if one is active
@@ -21,8 +21,12 @@ const UserList = ({ users, currentUser, onStartConversation, conversation }) => 
   };
 
   const handleLogout = () => {
-    // In a real app, you'd emit a logout event to the server
-    window.location.reload();
+    if (onLeavePlatform) {
+      onLeavePlatform();
+    } else {
+      // Fallback: reload the page
+      window.location.reload();
+    }
   };
 
   return (

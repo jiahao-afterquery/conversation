@@ -19,7 +19,8 @@ const Conversation = ({
   socket,
   onEndConversation, 
   onStartRecording, 
-  onStopRecording 
+  onStopRecording,
+  onLeavePlatform 
 }) => {
   const navigate = useNavigate();
   const [isConnected, setIsConnected] = useState(false);
@@ -565,7 +566,17 @@ const Conversation = ({
                 )}
               </div>
             </div>
-            <div className="w-24"></div> {/* Spacer for centering */}
+            <div className="flex items-center space-x-2">
+              {onLeavePlatform && (
+                <button
+                  onClick={onLeavePlatform}
+                  className="btn-secondary flex items-center text-sm"
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Leave Platform
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>

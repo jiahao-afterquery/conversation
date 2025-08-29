@@ -112,6 +112,16 @@ function App() {
     }
   };
 
+  const handleLeavePlatform = () => {
+    // Disconnect from socket (this will trigger the disconnect handler on server)
+    socket.disconnect();
+    // Reset local state
+    setUser(null);
+    setUsers([]);
+    setConversation(null);
+    setIsConnected(false);
+  };
+
   if (!isConnected) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -146,6 +156,7 @@ function App() {
                   currentUser={user}
                   onStartConversation={handleStartConversation}
                   conversation={conversation}
+                  onLeavePlatform={handleLeavePlatform}
                 />
               ) : (
                 <Navigate to="/" replace />
@@ -163,6 +174,7 @@ function App() {
                   onEndConversation={handleEndConversation}
                   onStartRecording={handleStartRecording}
                   onStopRecording={handleStopRecording}
+                  onLeavePlatform={handleLeavePlatform}
                 />
               ) : (
                 <Navigate to="/users" replace />

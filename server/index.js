@@ -330,40 +330,71 @@ io.on('connection', (socket) => {
   });
 
   // Handle disconnection
-  socket.on('disconnect', () => {
+  socket.on('disconnect', async () => {
     console.log('User disconnected:', socket.id);
     
     const user = users.get(socket.id);
-    if (user && user.isInConversation) {
-      const conversationId = user.currentConversationId;
-      const conversation = conversations.get(conversationId);
+    if (user) {
+      console.log('Removing user from platform:', user.name);
       
-      if (conversation) {
-        // End the conversation for the other participant
-        const otherParticipantId = conversation.participants.find(id => id !== socket.id);
-        const otherParticipant = users.get(otherParticipantId);
-        
-        if (otherParticipant) {
-          otherParticipant.isInConversation = false;
-          otherParticipant.currentConversationId = null;
-          userConversations.set(otherParticipantId, null);
-          
-          io.to(otherParticipant.socketId).emit('conversation-ended', { conversationId });
+      // Update Firebase if available
+      if (firebaseDB.isAvailable()) {
+        try {
+          await firebaseDB.updateUser(user.id, {
+            isInConversation: false,
+            currentConversationId: null,
+            lastSeen: new Date()
+          });
+        } catch (error) {
+          console.error('Error updating user in Firebase:', error);
         }
+      }
+      
+      if (user.isInConversation) {
+        const conversationId = user.currentConversationId;
+        const conversation = conversations.get(conversationId);
         
-        conversations.delete(conversationId);
+        if (conversation) {
+          console.log('Ending conversation due to user disconnect:', conversationId);
+          
+          // End conversation in Firebase if available
+          if (firebaseDB.isAvailable()) {
+            try {
+              await firebaseDB.endConversation(conversationId);
+            } catch (error) {
+              console.error('Error ending conversation in Firebase:', error);
+            }
+          }
+          
+          // End the conversation for the other participant
+          const otherParticipantId = conversation.participants.find(id => id !== socket.id);
+          const otherParticipant = users.get(otherParticipantId);
+          
+          if (otherParticipant) {
+            otherParticipant.isInConversation = false;
+            otherParticipant.currentConversationId = null;
+            userConversations.set(otherParticipantId, null);
+            
+            io.to(otherParticipant.socketId).emit('conversation-ended', { conversationId });
+          }
+          
+          conversations.delete(conversationId);
+        }
       }
     }
 
+    // Remove user from local storage
     users.delete(socket.id);
     userConversations.delete(socket.id);
 
-    // Update user list for all users
+    // Update user list for all remaining users
     const userList = Array.from(users.values()).map(u => ({
       id: u.id,
       name: u.name,
       isInConversation: u.isInConversation
     }));
+    
+    console.log('Updated user list after disconnect:', userList.length, 'users remaining');
     io.emit('user-list-updated', userList);
   });
 });
