@@ -39,19 +39,23 @@ class FirebaseStorage {
         }
       });
 
-      // Make file publicly accessible
-      await file.makePublic();
-
-      // Get public URL
+      // For uniform bucket-level access, we don't make individual files public
+      // Instead, we'll use signed URLs or configure bucket-level public access
       const publicUrl = `https://storage.googleapis.com/${this.bucket.name}/${destination}`;
       
       console.log(`✅ File uploaded successfully: ${publicUrl}`);
+      
+      // Generate a signed URL for secure access
+      const [signedUrl] = await file.getSignedUrl({
+        action: 'read',
+        expires: Date.now() + 24 * 60 * 60 * 1000 // 24 hours
+      });
       
       return {
         filename: fileName,
         originalName: fileName,
         size: file.metadata.size,
-        downloadUrl: publicUrl,
+        downloadUrl: signedUrl,
         path: destination,
         bucket: this.bucket.name
       };
@@ -97,12 +101,24 @@ class FirebaseStorage {
         prefix: `audio-files/${conversationId}/`
       });
 
-      return files.map(file => ({
-        name: file.name,
-        size: file.metadata.size,
-        timeCreated: file.metadata.timeCreated,
-        downloadUrl: `https://storage.googleapis.com/${this.bucket.name}/${file.name}`
-      }));
+      // Generate signed URLs for each file
+      const filesWithUrls = await Promise.all(
+        files.map(async (file) => {
+          const [signedUrl] = await file.getSignedUrl({
+            action: 'read',
+            expires: Date.now() + 24 * 60 * 60 * 1000 // 24 hours
+          });
+          
+          return {
+            name: file.name,
+            size: file.metadata.size,
+            timeCreated: file.metadata.timeCreated,
+            downloadUrl: signedUrl
+          };
+        })
+      );
+      
+      return filesWithUrls;
     } catch (error) {
       console.error('❌ Error listing conversation files:', error);
       return [];
