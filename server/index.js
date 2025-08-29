@@ -9,6 +9,10 @@ const { v4: uuidv4 } = require('uuid');
 const { RtcTokenBuilder, RtcRole } = require('agora-access-token');
 require('dotenv').config();
 
+// Firebase services
+const firebaseDB = require('./services/firebase-db');
+const firebaseStorage = require('./services/firebase-storage');
+
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
@@ -103,8 +107,15 @@ io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
   // User joins the platform
-  socket.on('join-platform', (userData) => {
+  socket.on('join-platform', async (userData) => {
     const userId = socket.id;
+    
+    // Create user in Firebase (if available)
+    const firebaseUser = await firebaseDB.createUser(userId, {
+      name: userData.name,
+      socketId: socket.id
+    });
+
     const user = {
       id: userId,
       name: userData.name,
@@ -116,19 +127,29 @@ io.on('connection', (socket) => {
     users.set(userId, user);
     userConversations.set(userId, null);
 
-    // Send updated user list to all users
-    const userList = Array.from(users.values()).map(u => ({
-      id: u.id,
-      name: u.name,
-      isInConversation: u.isInConversation
-    }));
+    // Get user list from Firebase or fallback to in-memory
+    let userList;
+    if (firebaseDB.isAvailable()) {
+      const firebaseUsers = await firebaseDB.getAllUsers();
+      userList = firebaseUsers.map(u => ({
+        id: u.userId,
+        name: u.name,
+        isInConversation: u.isInConversation
+      }));
+    } else {
+      userList = Array.from(users.values()).map(u => ({
+        id: u.id,
+        name: u.name,
+        isInConversation: u.isInConversation
+      }));
+    }
 
     io.emit('user-list-updated', userList);
     socket.emit('joined-platform', { userId, userList });
   });
 
   // User selects another user to start a conversation
-  socket.on('start-conversation', (targetUserId) => {
+  socket.on('start-conversation', async (targetUserId) => {
     const currentUser = users.get(socket.id);
     const targetUser = users.get(targetUserId);
 
@@ -142,8 +163,12 @@ io.on('connection', (socket) => {
       return;
     }
 
-          // Generate a shorter, Agora-compatible conversation ID
-      const conversationId = `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    // Generate a shorter, Agora-compatible conversation ID
+    const conversationId = `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Create conversation in Firebase (if available)
+    const firebaseConversation = await firebaseDB.createConversation(conversationId, [currentUser.id, targetUserId]);
+    
     const conversation = {
       id: conversationId,
       participants: [currentUser.id, targetUserId],
@@ -349,7 +374,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // Upload audio file endpoint
-app.post('/api/upload-audio', upload.single('audio'), (req, res) => {
+app.post('/api/upload-audio', upload.single('audio'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No audio file provided' });
@@ -361,14 +386,14 @@ app.post('/api/upload-audio', upload.single('audio'), (req, res) => {
       return res.status(400).json({ error: 'Missing conversationId or userId' });
     }
 
-    // Ensure uploads directory exists
+    // Ensure uploads directory exists (for local fallback)
     const uploadDir = path.join(__dirname, 'uploads');
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
       console.log('Created uploads directory:', uploadDir);
     }
 
-    const fileInfo = {
+    let fileInfo = {
       filename: req.file.filename,
       originalName: req.file.originalname,
       size: req.file.size,
@@ -378,6 +403,32 @@ app.post('/api/upload-audio', upload.single('audio'), (req, res) => {
       uploadTime: new Date().toISOString(),
       path: req.file.path
     };
+
+    // Upload to Firebase Storage if available
+    if (firebaseStorage.isAvailable()) {
+      console.log('📤 Uploading to Firebase Storage...');
+      const firebaseFileInfo = await firebaseStorage.uploadAudioFile(
+        req.file.path,
+        conversationId,
+        userId,
+        audioType
+      );
+      
+      if (firebaseFileInfo) {
+        fileInfo = { ...fileInfo, ...firebaseFileInfo };
+        
+        // Save file metadata to Firebase Firestore
+        await firebaseDB.saveAudioFile(fileInfo);
+        
+        // Clean up local file after successful upload
+        try {
+          fs.unlinkSync(req.file.path);
+          console.log('🗑️ Local file cleaned up:', req.file.path);
+        } catch (cleanupError) {
+          console.warn('⚠️ Could not clean up local file:', cleanupError.message);
+        }
+      }
+    }
 
     console.log('Audio file uploaded:', fileInfo);
     
@@ -396,9 +447,26 @@ app.post('/api/upload-audio', upload.single('audio'), (req, res) => {
 });
 
 // Get uploaded files for a conversation
-app.get('/api/conversation/:conversationId/files', (req, res) => {
+app.get('/api/conversation/:conversationId/files', async (req, res) => {
   try {
     const { conversationId } = req.params;
+    
+    // Try to get files from Firebase first
+    if (firebaseDB.isAvailable()) {
+      const firebaseFiles = await firebaseDB.getConversationAudioFiles(conversationId);
+      if (firebaseFiles.length > 0) {
+        const files = firebaseFiles.map(file => ({
+          filename: file.filename,
+          size: file.size,
+          uploadTime: file.uploadTime,
+          audioType: file.audioType,
+          downloadUrl: file.downloadUrl
+        }));
+        return res.json({ files });
+      }
+    }
+    
+    // Fallback to local files
     const uploadDir = path.join(__dirname, 'uploads');
     
     if (!fs.existsSync(uploadDir)) {

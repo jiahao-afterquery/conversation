@@ -79,6 +79,9 @@ jspm_packages/
 # Uploads (audio files)
 server/uploads/
 
+# Firebase
+server/firebase-service-account.json
+
 # Logs
 logs
 *.log
