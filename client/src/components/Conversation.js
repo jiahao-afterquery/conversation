@@ -9,7 +9,8 @@ import {
   Circle, 
   ArrowLeft,
   Download,
-  Upload
+  Upload,
+  LogOut
 } from 'lucide-react';
 import axios from 'axios';
 
