@@ -127,22 +127,12 @@ io.on('connection', (socket) => {
     users.set(userId, user);
     userConversations.set(userId, null);
 
-    // Get user list from Firebase or fallback to in-memory
-    let userList;
-    if (firebaseDB.isAvailable()) {
-      const firebaseUsers = await firebaseDB.getAllUsers();
-      userList = firebaseUsers.map(u => ({
-        id: u.userId,
-        name: u.name,
-        isInConversation: u.isInConversation
-      }));
-    } else {
-      userList = Array.from(users.values()).map(u => ({
-        id: u.id,
-        name: u.name,
-        isInConversation: u.isInConversation
-      }));
-    }
+    // Get user list from in-memory storage (Firebase only stores active users)
+    const userList = Array.from(users.values()).map(u => ({
+      id: u.id,
+      name: u.name,
+      isInConversation: u.isInConversation
+    }));
 
     io.emit('user-list-updated', userList);
     socket.emit('joined-platform', { userId, userList });
@@ -337,16 +327,12 @@ io.on('connection', (socket) => {
     if (user) {
       console.log('Removing user from platform:', user.name);
       
-      // Update Firebase if available
+      // Delete user from Firebase if available
       if (firebaseDB.isAvailable()) {
         try {
-          await firebaseDB.updateUser(user.id, {
-            isInConversation: false,
-            currentConversationId: null,
-            lastSeen: new Date()
-          });
+          await firebaseDB.deleteUser(user.id);
         } catch (error) {
-          console.error('Error updating user in Firebase:', error);
+          console.error('Error deleting user from Firebase:', error);
         }
       }
       
@@ -579,7 +565,31 @@ app.get('*', (req, res) => {
 });
 
 const PORT = process.env.PORT || 5001;
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Agora App ID: ${APP_ID}`);
+  
+  // Clean up any orphaned users in Firebase on server start
+  if (firebaseDB.isAvailable()) {
+    try {
+      const activeUserIds = Array.from(users.keys());
+      await firebaseDB.cleanupOrphanedUsers(activeUserIds);
+      console.log('🧹 Firebase cleanup completed');
+    } catch (error) {
+      console.error('Error during Firebase cleanup:', error);
+    }
+  }
+  
+  // Set up periodic cleanup every 5 minutes
+  setInterval(async () => {
+    if (firebaseDB.isAvailable()) {
+      try {
+        const activeUserIds = Array.from(users.keys());
+        await firebaseDB.cleanupOrphanedUsers(activeUserIds);
+        console.log('🧹 Periodic Firebase cleanup completed');
+      } catch (error) {
+        console.error('Error during periodic Firebase cleanup:', error);
+      }
+    }
+  }, 5 * 60 * 1000); // 5 minutes
 });

@@ -61,6 +61,19 @@ class FirebaseDB {
     }
   }
 
+  async deleteUser(userId) {
+    if (!this.isAvailable()) return false;
+    
+    try {
+      await this.users.doc(userId).delete();
+      console.log('✅ User deleted from Firebase:', userId);
+      return true;
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      return false;
+    }
+  }
+
   async getAllUsers() {
     if (!this.isAvailable()) return [];
     
@@ -217,6 +230,24 @@ class FirebaseDB {
     } catch (error) {
       console.error('Error getting user audio files:', error);
       return [];
+    }
+  }
+
+  async cleanupOrphanedUsers(activeUserIds) {
+    if (!this.isAvailable()) return;
+    
+    try {
+      const snapshot = await this.users.get();
+      const allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
+      for (const user of allUsers) {
+        if (!activeUserIds.includes(user.id)) {
+          console.log('🧹 Cleaning up orphaned user:', user.name);
+          await this.deleteUser(user.id);
+        }
+      }
+    } catch (error) {
+      console.error('Error cleaning up orphaned users:', error);
     }
   }
 }
