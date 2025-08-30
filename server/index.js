@@ -319,6 +319,71 @@ io.on('connection', (socket) => {
     io.emit('user-list-updated', userList);
   });
 
+  // Handle explicit leave platform event
+  socket.on('leave-platform', async () => {
+    console.log('User explicitly leaving platform:', socket.id);
+    
+    const user = users.get(socket.id);
+    if (user) {
+      console.log('Removing user from platform:', user.name);
+      
+      // Delete user from Firebase if available
+      if (firebaseDB.isAvailable()) {
+        try {
+          await firebaseDB.deleteUser(user.id);
+        } catch (error) {
+          console.error('Error deleting user from Firebase:', error);
+        }
+      }
+      
+      if (user.isInConversation) {
+        const conversationId = user.currentConversationId;
+        const conversation = conversations.get(conversationId);
+        
+        if (conversation) {
+          console.log('Ending conversation due to user leaving platform:', conversationId);
+          
+          // End conversation in Firebase if available
+          if (firebaseDB.isAvailable()) {
+            try {
+              await firebaseDB.endConversation(conversationId);
+            } catch (error) {
+              console.error('Error ending conversation in Firebase:', error);
+            }
+          }
+          
+          // End the conversation for the other participant
+          const otherParticipantId = conversation.participants.find(id => id !== socket.id);
+          const otherParticipant = users.get(otherParticipantId);
+          
+          if (otherParticipant) {
+            otherParticipant.isInConversation = false;
+            otherParticipant.currentConversationId = null;
+            userConversations.set(otherParticipantId, null);
+            
+            io.to(otherParticipant.socketId).emit('conversation-ended', { conversationId });
+          }
+          
+          conversations.delete(conversationId);
+        }
+      }
+    }
+
+    // Remove user from local storage
+    users.delete(socket.id);
+    userConversations.delete(socket.id);
+
+    // Update user list for all remaining users
+    const userList = Array.from(users.values()).map(u => ({
+      id: u.id,
+      name: u.name,
+      isInConversation: u.isInConversation
+    }));
+    
+    console.log('Updated user list after user left platform:', userList.length, 'users remaining');
+    io.emit('user-list-updated', userList);
+  });
+
   // Handle disconnection
   socket.on('disconnect', async () => {
     console.log('User disconnected:', socket.id);

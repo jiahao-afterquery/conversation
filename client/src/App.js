@@ -32,6 +32,7 @@ function App() {
     // Handle user list updates
     socket.on('user-list-updated', (userList) => {
       setUsers(userList);
+      console.log('User list updated:', userList.length, 'users');
     });
 
     // Handle joined platform confirmation
@@ -113,13 +114,20 @@ function App() {
   };
 
   const handleLeavePlatform = () => {
+    // Emit a leave event to the server before disconnecting
+    socket.emit('leave-platform');
+    
     // Disconnect from socket (this will trigger the disconnect handler on server)
     socket.disconnect();
+    
     // Reset local state
     setUser(null);
     setUsers([]);
     setConversation(null);
     setIsConnected(false);
+    
+    // Force navigation to login page
+    window.location.href = '/';
   };
 
   if (!isConnected) {

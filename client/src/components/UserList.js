@@ -24,8 +24,8 @@ const UserList = ({ users, currentUser, onStartConversation, conversation, onLea
     if (onLeavePlatform) {
       onLeavePlatform();
     } else {
-      // Fallback: reload the page
-      window.location.reload();
+      // Fallback: redirect to login page
+      window.location.href = '/';
     }
   };
 
