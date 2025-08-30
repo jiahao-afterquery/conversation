@@ -8,8 +8,6 @@ import {
   Square, 
   Circle, 
   ArrowLeft,
-  Download,
-  Upload,
   LogOut
 } from 'lucide-react';
 import axios from 'axios';
@@ -28,8 +26,6 @@ const Conversation = ({
   const [isRecording, setIsRecording] = useState(conversation?.isRecording || false);
   const [isMuted, setIsMuted] = useState(false);
   const [remoteUser, setRemoteUser] = useState(null);
-  const [uploadedFiles, setUploadedFiles] = useState([]);
-  const [isUploading, setIsUploading] = useState(false);
   const [showRecordingNotification, setShowRecordingNotification] = useState(false);
   const [recordingMode, setRecordingMode] = useState('separate'); // 'separate' or 'mixed'
   const [isDemoMode, setIsDemoMode] = useState(false);
@@ -55,7 +51,6 @@ const Conversation = ({
 
   useEffect(() => {
     initializeAgora();
-    fetchConversationFiles();
 
     return () => {
       cleanupAgora();
@@ -472,8 +467,6 @@ const Conversation = ({
 
   const uploadAudioFile = async (audioBlob, audioType = 'local') => {
     try {
-      setIsUploading(true);
-      
       // Use socket ID as fallback if user ID is undefined
       const userId = currentUser.id || socket.id;
       
@@ -500,7 +493,6 @@ const Conversation = ({
 
       if (response.data.success) {
         console.log(`${audioType} audio file uploaded successfully`);
-        fetchConversationFiles(); // Refresh file list
       }
     } catch (error) {
       console.error(`Error uploading ${audioType} audio file:`, error);
@@ -508,20 +500,10 @@ const Conversation = ({
       if (audioType === 'local') {
         alert('Failed to upload audio file');
       }
-    } finally {
-      setIsUploading(false);
     }
   };
 
-  const fetchConversationFiles = async () => {
-    try {
-      const API_BASE_URL = process.env.REACT_APP_SERVER_URL || '';
-      const response = await axios.get(`${API_BASE_URL}/api/conversation/${conversation.conversationId}/files`);
-      setUploadedFiles(response.data.files || []);
-    } catch (error) {
-      console.error('Error fetching conversation files:', error);
-    }
-  };
+
 
   const handleEndConversation = async () => {
     if (isRecording) {
@@ -716,82 +698,7 @@ const Conversation = ({
             </div>
           </div>
 
-          {/* Recorded Files */}
-          <div className="bg-white rounded-xl shadow-sm border p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold text-gray-900">
-                Recorded Files
-              </h2>
-              {isUploading && (
-                <div className="flex items-center text-sm text-gray-500">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600 mr-2"></div>
-                  Uploading...
-                </div>
-              )}
-            </div>
 
-            {uploadedFiles.length === 0 ? (
-              <div className="text-center py-12">
-                <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  No recordings yet
-                </h3>
-                <p className="text-gray-500">
-                  Start recording to capture audio files
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {uploadedFiles.map((file, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50"
-                  >
-                    <div className="flex items-center space-x-3">
-                      <Download className="w-4 h-4 text-gray-400" />
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">
-                          {file.audioType === 'local' ? 'Your Audio' : 
-                           file.audioType === 'mixed' ? 'Mixed Audio (Both Users)' : 
-                           file.audioType === 'remote' ? 'Other User Audio' :
-                           'Other User Audio'}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {(file.size / 1024 / 1024).toFixed(2)} MB • {new Date(file.uploadTime).toLocaleString()}
-                          {file.audioType === 'local' ? ' • Your voice only' : 
-                           file.audioType === 'mixed' ? ' • Both users combined' : 
-                           file.audioType === 'remote' ? ' • Other user voice only' :
-                           ' • Other user voice'}
-                        </p>
-                      </div>
-                    </div>
-                                                             <button
-                      onClick={async () => {
-                        try {
-                          // Check if it's a Firebase Storage URL (starts with https://)
-                          if (file.downloadUrl && file.downloadUrl.startsWith('https://')) {
-                            // Direct Firebase Storage URL
-                            window.open(file.downloadUrl, '_blank');
-                          } else {
-                            // Local server URL
-                            const API_BASE_URL = process.env.REACT_APP_SERVER_URL || '';
-                            const downloadUrl = `${API_BASE_URL}${file.downloadUrl}`;
-                            window.open(downloadUrl, '_blank');
-                          }
-                        } catch (error) {
-                          console.error('Download error:', error);
-                          alert('Failed to download file. Please try again.');
-                        }
-                      }}
-                      className="btn-secondary text-xs"
-                    >
-                      Download
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
       </div>
     </div>
