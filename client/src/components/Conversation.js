@@ -8,7 +8,8 @@ import {
   Square, 
   Circle, 
   ArrowLeft,
-  LogOut
+  LogOut,
+  Upload
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -320,25 +321,8 @@ const Conversation = ({
             }
           }
 
-          // If we successfully captured remote audio, start recording it
-          if (remoteStream) {
-            remoteMediaRecorder.current = new MediaRecorder(remoteStream);
-            remoteRecordedChunks.current = [];
-
-            remoteMediaRecorder.current.ondataavailable = (event) => {
-              if (event.data.size > 0) {
-                remoteRecordedChunks.current.push(event.data);
-              }
-            };
-
-            remoteMediaRecorder.current.start();
-            console.log('Remote recording started successfully for this user');
-            setRecordingMode('separate');
-          } else {
-            console.log('Could not capture remote audio, falling back to mixed recording');
-            // Fallback to mixed recording
-            await startMixedRecording(localStream);
-          }
+          // Always use mixed recording to capture both users
+          await startMixedRecording(localStream);
         } catch (error) {
           console.warn('Remote audio capture failed:', error);
           // Fallback to mixed recording
@@ -384,19 +368,14 @@ const Conversation = ({
         };
       }
 
-      // Stop remote/mixed recording
+      // Stop mixed recording (captures both users)
       if (remoteMediaRecorder.current && remoteMediaRecorder.current.state !== 'inactive') {
         remoteMediaRecorder.current.stop();
         remoteMediaRecorder.current.onstop = async () => {
-          const remoteBlob = new Blob(remoteRecordedChunks.current, { type: 'audio/webm' });
-          const audioType = recordingMode === 'separate' ? 'remote' : 'mixed';
-          await uploadAudioFile(remoteBlob, audioType);
+          const mixedBlob = new Blob(remoteRecordedChunks.current, { type: 'audio/webm' });
+          await uploadAudioFile(mixedBlob, 'mixed');
           remoteRecordedChunks.current = [];
         };
-      } else {
-        // If no remote recording was started, upload a placeholder for the other user
-        const emptyBlob = new Blob([], { type: 'audio/webm' });
-        await uploadAudioFile(emptyBlob, 'remote');
       }
 
       console.log('Recording stopped for this user');
@@ -415,7 +394,7 @@ const Conversation = ({
     }
   };
 
-  // Helper function for mixed recording fallback
+  // Helper function for mixed recording (captures both users)
   const startMixedRecording = async (localStream) => {
     try {
       const audioContext = new AudioContext();
@@ -500,6 +479,23 @@ const Conversation = ({
       if (audioType === 'local') {
         alert('Failed to upload audio file');
       }
+    }
+  };
+
+  // Function to manually upload mixed conversation
+  const uploadMixedConversation = async () => {
+    try {
+      if (!remoteRecordedChunks.current || remoteRecordedChunks.current.length === 0) {
+        alert('No mixed conversation recorded yet. Start recording first.');
+        return;
+      }
+
+      const mixedBlob = new Blob(remoteRecordedChunks.current, { type: 'audio/webm' });
+      await uploadAudioFile(mixedBlob, 'mixed');
+      alert('Mixed conversation uploaded successfully!');
+    } catch (error) {
+      console.error('Error uploading mixed conversation:', error);
+      alert('Failed to upload mixed conversation');
     }
   };
 
@@ -687,6 +683,15 @@ const Conversation = ({
                   )}
                 </button>
               </div>
+
+              <button
+                onClick={uploadMixedConversation}
+                disabled={!remoteRecordedChunks.current || remoteRecordedChunks.current.length === 0}
+                className="w-full btn-secondary flex items-center justify-center"
+              >
+                <Upload className="w-5 h-5 mr-2" />
+                Upload Mixed Conversation
+              </button>
 
               <button
                 onClick={handleEndConversation}
