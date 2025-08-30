@@ -8,8 +8,7 @@ import {
   Square, 
   Circle, 
   ArrowLeft,
-  LogOut,
-  Upload
+  LogOut
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -247,12 +246,11 @@ const Conversation = ({
       localMediaRecorder.current.start();
       console.log('Local recording started for this user');
 
-      // Capture remote audio using Agora's audio processing
+      // Try to capture remote audio separately
+      let remoteStream = null;
       if (remoteAudioTrack.current) {
         try {
           // Method 1: Try to get the MediaStreamTrack directly
-          let remoteStream = null;
-          
           try {
             const mediaStreamTrack = remoteAudioTrack.current.getMediaStreamTrack();
             if (mediaStreamTrack && mediaStreamTrack.readyState === 'live') {
@@ -321,17 +319,35 @@ const Conversation = ({
             }
           }
 
-          // Always use mixed recording to capture both users
-          await startMixedRecording(localStream);
+          // Start remote recording if we captured remote audio
+          if (remoteStream) {
+            remoteMediaRecorder.current = new MediaRecorder(remoteStream);
+            remoteRecordedChunks.current = [];
+
+            remoteMediaRecorder.current.ondataavailable = (event) => {
+              if (event.data.size > 0) {
+                remoteRecordedChunks.current.push(event.data);
+              }
+            };
+
+            remoteMediaRecorder.current.start();
+            console.log('Remote recording started for this user');
+            setRecordingMode('separate');
+          } else {
+            console.log('Could not capture remote audio, will use mixed recording only');
+            setRecordingMode('mixed');
+          }
         } catch (error) {
           console.warn('Remote audio capture failed:', error);
-          // Fallback to mixed recording
-          await startMixedRecording(localStream);
+          setRecordingMode('mixed');
         }
       } else {
         console.log('No remote user connected, recording local audio only');
         setRecordingMode('local-only');
       }
+
+      // Always start mixed recording to capture both users combined
+      await startMixedRecording(localStream);
     } catch (error) {
       console.error('Error starting recording for this user:', error);
       
@@ -358,7 +374,7 @@ const Conversation = ({
       console.log('Conversation:', conversation);
       console.log('Socket ID:', socket?.id);
       
-      // Stop local recording
+      // Stop local recording and upload
       if (localMediaRecorder.current && localMediaRecorder.current.state !== 'inactive') {
         localMediaRecorder.current.stop();
         localMediaRecorder.current.onstop = async () => {
@@ -368,17 +384,22 @@ const Conversation = ({
         };
       }
 
-      // Stop mixed recording (captures both users)
+      // Stop remote recording and upload (if available)
       if (remoteMediaRecorder.current && remoteMediaRecorder.current.state !== 'inactive') {
         remoteMediaRecorder.current.stop();
         remoteMediaRecorder.current.onstop = async () => {
-          const mixedBlob = new Blob(remoteRecordedChunks.current, { type: 'audio/webm' });
-          await uploadAudioFile(mixedBlob, 'mixed');
+          const remoteBlob = new Blob(remoteRecordedChunks.current, { type: 'audio/webm' });
+          await uploadAudioFile(remoteBlob, 'remote');
           remoteRecordedChunks.current = [];
         };
       }
 
-      console.log('Recording stopped for this user');
+      // Stop mixed recording (captures both users)
+      if (window.mixedRecorder && window.mixedRecorder.state !== 'inactive') {
+        window.mixedRecorder.stop();
+      }
+
+      console.log('Recording stopped for this user - all files uploaded automatically');
     } catch (error) {
       console.error('Error stopping recording for this user:', error);
     }
@@ -415,19 +436,28 @@ const Conversation = ({
         }
       }
       
-      // Create mixed recorder
-      remoteMediaRecorder.current = new MediaRecorder(destination.stream);
-      remoteRecordedChunks.current = [];
+      // Create mixed recorder (separate from remote recorder)
+      const mixedRecorder = new MediaRecorder(destination.stream);
+      const mixedChunks = [];
 
-      remoteMediaRecorder.current.ondataavailable = (event) => {
+      mixedRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
-          remoteRecordedChunks.current.push(event.data);
+          mixedChunks.push(event.data);
         }
       };
 
-      remoteMediaRecorder.current.start();
+      mixedRecorder.onstop = async () => {
+        if (mixedChunks.length > 0) {
+          const mixedBlob = new Blob(mixedChunks, { type: 'audio/webm' });
+          await uploadAudioFile(mixedBlob, 'mixed');
+        }
+      };
+
+      mixedRecorder.start();
       console.log('Mixed recording started (includes both users)');
-      setRecordingMode('mixed');
+      
+      // Store the mixed recorder reference
+      window.mixedRecorder = mixedRecorder;
     } catch (error) {
       console.warn('Could not start mixed recording:', error);
       setRecordingMode('local-only');
@@ -482,22 +512,7 @@ const Conversation = ({
     }
   };
 
-  // Function to manually upload mixed conversation
-  const uploadMixedConversation = async () => {
-    try {
-      if (!remoteRecordedChunks.current || remoteRecordedChunks.current.length === 0) {
-        alert('No mixed conversation recorded yet. Start recording first.');
-        return;
-      }
 
-      const mixedBlob = new Blob(remoteRecordedChunks.current, { type: 'audio/webm' });
-      await uploadAudioFile(mixedBlob, 'mixed');
-      alert('Mixed conversation uploaded successfully!');
-    } catch (error) {
-      console.error('Error uploading mixed conversation:', error);
-      alert('Failed to upload mixed conversation');
-    }
-  };
 
 
 
@@ -684,14 +699,7 @@ const Conversation = ({
                 </button>
               </div>
 
-              <button
-                onClick={uploadMixedConversation}
-                disabled={!remoteRecordedChunks.current || remoteRecordedChunks.current.length === 0}
-                className="w-full btn-secondary flex items-center justify-center"
-              >
-                <Upload className="w-5 h-5 mr-2" />
-                Upload Mixed Conversation
-              </button>
+
 
               <button
                 onClick={handleEndConversation}
