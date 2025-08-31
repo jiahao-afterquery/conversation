@@ -34,6 +34,8 @@ class FirebaseStorage {
       console.log(`📤 Uploading ${fileName} to Firebase Storage...`);
       
       // Upload file to Firebase Storage
+      console.log('📤 Attempting Firebase upload with destination:', destination);
+      
       const [file] = await this.bucket.upload(filePath, {
         destination,
         metadata: {
@@ -45,7 +47,9 @@ class FirebaseStorage {
             originalName: fileName,
             uploadTime: new Date().toISOString()
           }
-        }
+        },
+        // Add public read access for testing
+        public: true
       });
 
       // For uniform bucket-level access, we don't make individual files public
@@ -71,6 +75,19 @@ class FirebaseStorage {
       };
     } catch (error) {
       console.error('❌ Error uploading to Firebase Storage:', error);
+      console.error('❌ Error code:', error.code);
+      console.error('❌ Error message:', error.message);
+      console.error('❌ Error details:', error.details);
+      
+      // Check for specific Firebase errors
+      if (error.code === 'storage/unauthorized') {
+        console.error('🔐 Firebase Storage unauthorized - check security rules');
+      } else if (error.code === 'storage/quota-exceeded') {
+        console.error('💾 Firebase Storage quota exceeded');
+      } else if (error.code === 'storage/unauthenticated') {
+        console.error('🔑 Firebase Storage unauthenticated - check service account');
+      }
+      
       return null;
     }
   }

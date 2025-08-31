@@ -112,7 +112,7 @@ io.on('connection', (socket) => {
     
     // Create user in Firebase (if available)
     const firebaseUser = await firebaseDB.createUser(userId, {
-      name: userData.name,
+      name: userData.name,        
       socketId: socket.id
     });
 
@@ -128,7 +128,7 @@ io.on('connection', (socket) => {
     userConversations.set(userId, null);
 
     // Get user list from in-memory storage (Firebase only stores active users)
-    const userList = Array.from(users.values()).map(u => ({
+    const userList = Array.from(users.values()).map(u => ({       
       id: u.id,
       name: u.name,
       isInConversation: u.isInConversation

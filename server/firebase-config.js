@@ -13,6 +13,10 @@ const initializeFirebase = () => {
     console.log('🔍 Firebase Config Debug:');
     console.log('Project ID:', process.env.FIREBASE_PROJECT_ID);
     console.log('Storage Bucket:', process.env.FIREBASE_STORAGE_BUCKET);
+    
+    // Set default storage bucket if not provided
+    const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || 'audio-platform-52f03.firebasestorage.app';
+    console.log('Using Storage Bucket:', storageBucket);
 
     let app;
 
@@ -23,7 +27,7 @@ const initializeFirebase = () => {
       const serviceAccount = require(serviceAccountPath);
       app = admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
-        storageBucket: process.env.FIREBASE_STORAGE_BUCKET
+        storageBucket: storageBucket
       });
     }
     // Method 2: Fallback to environment variables
@@ -55,7 +59,7 @@ const initializeFirebase = () => {
 
       app = admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
-        storageBucket: process.env.FIREBASE_STORAGE_BUCKET
+        storageBucket: storageBucket
       });
     }
     // Method 3: No Firebase available
