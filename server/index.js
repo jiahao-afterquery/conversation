@@ -458,13 +458,21 @@ app.get('/api/health', (req, res) => {
 // Upload audio file endpoint
 app.post('/api/upload-audio', upload.single('audio'), async (req, res) => {
   try {
+    console.log('🎯 Upload request received');
+    console.log('📁 File:', req.file ? req.file.filename : 'No file');
+    console.log('📋 Body:', req.body);
+    
     if (!req.file) {
+      console.log('❌ No audio file provided');
       return res.status(400).json({ error: 'No audio file provided' });
     }
 
     const { conversationId, userId, audioType } = req.body;
     
     if (!conversationId || !userId) {
+      console.log('❌ Missing conversationId or userId');
+      console.log('conversationId:', conversationId);
+      console.log('userId:', userId);
       return res.status(400).json({ error: 'Missing conversationId or userId' });
     }
 
@@ -487,8 +495,14 @@ app.post('/api/upload-audio', upload.single('audio'), async (req, res) => {
     };
 
     // Upload to Firebase Storage if available
+    console.log('🔍 Checking Firebase Storage availability...');
+    console.log('firebaseStorage.isAvailable():', firebaseStorage.isAvailable());
+    
     if (firebaseStorage.isAvailable()) {
       console.log('📤 Uploading to Firebase Storage...');
+      console.log('📁 File path:', req.file.path);
+      console.log('📋 Upload params:', { conversationId, userId, audioType });
+      
       const firebaseFileInfo = await firebaseStorage.uploadAudioFile(
         req.file.path,
         conversationId,
@@ -496,11 +510,15 @@ app.post('/api/upload-audio', upload.single('audio'), async (req, res) => {
         audioType
       );
       
+      console.log('📤 Firebase upload result:', firebaseFileInfo);
+      
       if (firebaseFileInfo) {
         fileInfo = { ...fileInfo, ...firebaseFileInfo };
         
         // Save file metadata to Firebase Firestore
-        await firebaseDB.saveAudioFile(fileInfo);
+        console.log('💾 Saving to Firebase Firestore...');
+        const saveResult = await firebaseDB.saveAudioFile(fileInfo);
+        console.log('💾 Firestore save result:', saveResult);
         
         // Clean up local file after successful upload
         try {
@@ -509,7 +527,11 @@ app.post('/api/upload-audio', upload.single('audio'), async (req, res) => {
         } catch (cleanupError) {
           console.warn('⚠️ Could not clean up local file:', cleanupError.message);
         }
+      } else {
+        console.log('❌ Firebase upload failed, keeping local file');
       }
+    } else {
+      console.log('⚠️ Firebase Storage not available, keeping local file only');
     }
 
     console.log('Audio file uploaded:', fileInfo);

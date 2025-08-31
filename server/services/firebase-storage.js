@@ -8,11 +8,20 @@ class FirebaseStorage {
 
   // Check if Firebase Storage is available
   isAvailable() {
+    console.log('🔍 Firebase Storage check:');
+    console.log('  - this.bucket:', this.bucket ? 'Available' : 'null');
+    console.log('  - bucket name:', this.bucket ? this.bucket.name : 'N/A');
     return this.bucket !== null;
   }
 
   // Upload audio file to Firebase Storage
   async uploadAudioFile(filePath, conversationId, userId, audioType) {
+    console.log('🚀 Starting Firebase upload...');
+    console.log('  - filePath:', filePath);
+    console.log('  - conversationId:', conversationId);
+    console.log('  - userId:', userId);
+    console.log('  - audioType:', audioType);
+    
     if (!this.isAvailable()) {
       console.log('⚠️ Firebase Storage not available, using local storage');
       return null;
