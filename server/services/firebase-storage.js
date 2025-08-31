@@ -28,7 +28,7 @@ class FirebaseStorage {
       const [file] = await this.bucket.upload(filePath, {
         destination,
         metadata: {
-          contentType: 'audio/webm',
+          contentType: 'audio/wav',
           metadata: {
             conversationId,
             userId,

@@ -39,14 +39,14 @@ const storage = multer.diskStorage({
     const userId = req.body.userId;
     const audioType = req.body.audioType || 'local';
     const timestamp = Date.now();
-    cb(null, `${conversationId}_${userId}_${audioType}_${timestamp}.webm`);
+    cb(null, `${conversationId}_${userId}_${audioType}_${timestamp}.wav`);
   }
 });
 
 const upload = multer({ 
   storage,
   fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('audio/') || file.mimetype === 'video/webm') {
+    if (file.mimetype.startsWith('audio/') || file.mimetype === 'audio/wav') {
       cb(null, true);
     } else {
       cb(new Error('Only audio files are allowed'));

@@ -234,7 +234,9 @@ const Conversation = ({
 
       // Start local audio recording (this always works)
       const localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      localMediaRecorder.current = new MediaRecorder(localStream);
+      localMediaRecorder.current = new MediaRecorder(localStream, {
+        mimeType: 'audio/wav'
+      });
       localRecordedChunks.current = [];
 
       localMediaRecorder.current.ondataavailable = (event) => {
@@ -321,7 +323,9 @@ const Conversation = ({
 
           // Start remote recording if we captured remote audio
           if (remoteStream) {
-            remoteMediaRecorder.current = new MediaRecorder(remoteStream);
+            remoteMediaRecorder.current = new MediaRecorder(remoteStream, {
+              mimeType: 'audio/wav'
+            });
             remoteRecordedChunks.current = [];
 
             remoteMediaRecorder.current.ondataavailable = (event) => {
@@ -378,7 +382,7 @@ const Conversation = ({
       if (localMediaRecorder.current && localMediaRecorder.current.state !== 'inactive') {
         localMediaRecorder.current.stop();
         localMediaRecorder.current.onstop = async () => {
-          const localBlob = new Blob(localRecordedChunks.current, { type: 'audio/webm' });
+          const localBlob = new Blob(localRecordedChunks.current, { type: 'audio/wav' });
           await uploadAudioFile(localBlob, 'local');
           localRecordedChunks.current = [];
         };
@@ -388,7 +392,7 @@ const Conversation = ({
       if (remoteMediaRecorder.current && remoteMediaRecorder.current.state !== 'inactive') {
         remoteMediaRecorder.current.stop();
         remoteMediaRecorder.current.onstop = async () => {
-          const remoteBlob = new Blob(remoteRecordedChunks.current, { type: 'audio/webm' });
+          const remoteBlob = new Blob(remoteRecordedChunks.current, { type: 'audio/wav' });
           await uploadAudioFile(remoteBlob, 'remote');
           remoteRecordedChunks.current = [];
         };
@@ -437,7 +441,9 @@ const Conversation = ({
       }
       
       // Create mixed recorder (separate from remote recorder)
-      const mixedRecorder = new MediaRecorder(destination.stream);
+      const mixedRecorder = new MediaRecorder(destination.stream, {
+        mimeType: 'audio/wav'
+      });
       const mixedChunks = [];
 
       mixedRecorder.ondataavailable = (event) => {
@@ -448,7 +454,7 @@ const Conversation = ({
 
       mixedRecorder.onstop = async () => {
         if (mixedChunks.length > 0) {
-          const mixedBlob = new Blob(mixedChunks, { type: 'audio/webm' });
+          const mixedBlob = new Blob(mixedChunks, { type: 'audio/wav' });
           await uploadAudioFile(mixedBlob, 'mixed');
         }
       };
@@ -488,7 +494,7 @@ const Conversation = ({
       });
       
       const formData = new FormData();
-      formData.append('audio', audioBlob, `${audioType}_recording.webm`);
+      formData.append('audio', audioBlob, `${audioType}_recording.wav`);
       formData.append('conversationId', conversation.conversationId);
       formData.append('userId', userId);
       formData.append('audioType', audioType);
