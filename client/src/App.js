@@ -97,19 +97,19 @@ function App() {
 
   const handleEndConversation = () => {
     if (conversation) {
-      socket.emit('end-conversation', conversation.conversationId);
+      socket.emit('end-conversation', conversation.id);
     }
   };
 
   const handleStartRecording = () => {
     if (conversation) {
-      socket.emit('start-recording', conversation.conversationId);
+      socket.emit('start-recording', conversation.id);
     }
   };
 
   const handleStopRecording = () => {
     if (conversation) {
-      socket.emit('stop-recording', conversation.conversationId);
+      socket.emit('stop-recording', conversation.id);
     }
   };
 

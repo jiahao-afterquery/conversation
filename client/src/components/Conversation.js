@@ -67,7 +67,7 @@ const Conversation = ({
       console.log('Recording state changed:', {
         wasRecording,
         isNowRecording,
-        conversationId: conversation.conversationId,
+        conversationId: conversation.id,
         userId: currentUser.id
       });
       
@@ -487,7 +487,7 @@ const Conversation = ({
       
       console.log('Uploading audio file:', {
         audioType,
-        conversationId: conversation.conversationId,
+        conversationId: conversation.id,
         userId: userId,
         currentUser: currentUser,
         socketId: socket.id
@@ -495,7 +495,7 @@ const Conversation = ({
       
       const formData = new FormData();
       formData.append('audio', audioBlob, `${audioType}_recording.wav`);
-      formData.append('conversationId', conversation.conversationId);
+      formData.append('conversationId', conversation.id);
       formData.append('userId', userId);
       formData.append('audioType', audioType);
 
