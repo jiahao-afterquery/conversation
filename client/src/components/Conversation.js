@@ -382,9 +382,19 @@ const Conversation = ({
       if (localMediaRecorder.current && localMediaRecorder.current.state !== 'inactive') {
         localMediaRecorder.current.stop();
         localMediaRecorder.current.onstop = async () => {
+          console.log('🛑 Local recording stopped, creating blob...');
+          console.log('📊 Local chunks length:', localRecordedChunks.current.length);
+          
           const localBlob = new Blob(localRecordedChunks.current, { type: 'audio/wav' });
+          console.log('📦 Local blob created:', {
+            size: localBlob.size,
+            type: localBlob.type
+          });
+          
+          console.log('📤 Calling uploadAudioFile for local recording...');
           await uploadAudioFile(localBlob, 'local');
           localRecordedChunks.current = [];
+          console.log('🧹 Local chunks cleared');
         };
       }
 
@@ -392,9 +402,19 @@ const Conversation = ({
       if (remoteMediaRecorder.current && remoteMediaRecorder.current.state !== 'inactive') {
         remoteMediaRecorder.current.stop();
         remoteMediaRecorder.current.onstop = async () => {
+          console.log('🛑 Remote recording stopped, creating blob...');
+          console.log('📊 Remote chunks length:', remoteRecordedChunks.current.length);
+          
           const remoteBlob = new Blob(remoteRecordedChunks.current, { type: 'audio/wav' });
+          console.log('📦 Remote blob created:', {
+            size: remoteBlob.size,
+            type: remoteBlob.type
+          });
+          
+          console.log('📤 Calling uploadAudioFile for remote recording...');
           await uploadAudioFile(remoteBlob, 'remote');
           remoteRecordedChunks.current = [];
+          console.log('🧹 Remote chunks cleared');
         };
       }
 
@@ -453,9 +473,20 @@ const Conversation = ({
       };
 
       mixedRecorder.onstop = async () => {
+        console.log('🛑 Mixed recording stopped, creating blob...');
+        console.log('📊 Mixed chunks length:', mixedChunks.length);
+        
         if (mixedChunks.length > 0) {
           const mixedBlob = new Blob(mixedChunks, { type: 'audio/wav' });
+          console.log('📦 Mixed blob created:', {
+            size: mixedBlob.size,
+            type: mixedBlob.type
+          });
+          
+          console.log('📤 Calling uploadAudioFile for mixed recording...');
           await uploadAudioFile(mixedBlob, 'mixed');
+        } else {
+          console.log('⚠️ No mixed chunks to upload');
         }
       };
 
@@ -482,8 +513,20 @@ const Conversation = ({
 
   const uploadAudioFile = async (audioBlob, audioType = 'local') => {
     try {
+      console.log('🚀 Starting uploadAudioFile...');
+      console.log('📊 Upload details:', {
+        audioType,
+        blobSize: audioBlob.size,
+        blobType: audioBlob.type,
+        conversationId: conversation.conversationId,
+        currentUser: currentUser,
+        socketId: socket.id
+      });
+      
       // Use socket ID as fallback if user ID is undefined
       const userId = currentUser.id || socket.id;
+      
+      console.log('👤 Using userId:', userId);
       
       console.log('Uploading audio file:', {
         audioType,
@@ -499,18 +542,39 @@ const Conversation = ({
       formData.append('userId', userId);
       formData.append('audioType', audioType);
 
+      console.log('📦 FormData created with:', {
+        audioFile: `${audioType}_recording.wav`,
+        conversationId: conversation.conversationId,
+        userId: userId,
+        audioType: audioType
+      });
+
       const API_BASE_URL = process.env.REACT_APP_SERVER_URL || '';
+      console.log('🌐 API URL:', `${API_BASE_URL}/api/upload-audio`);
+      
+      console.log('📤 Sending upload request...');
       const response = await axios.post(`${API_BASE_URL}/api/upload-audio`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
 
+      console.log('📥 Upload response received:', response.data);
+
       if (response.data.success) {
-        console.log(`${audioType} audio file uploaded successfully`);
+        console.log(`✅ ${audioType} audio file uploaded successfully`);
+        console.log('📄 File info:', response.data.fileInfo);
+      } else {
+        console.error(`❌ Upload failed:`, response.data);
       }
     } catch (error) {
-      console.error(`Error uploading ${audioType} audio file:`, error);
+      console.error(`❌ Error uploading ${audioType} audio file:`, error);
+      console.error('❌ Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        statusText: error.response?.statusText
+      });
       // Don't show alert for remote audio upload failures as they're expected
       if (audioType === 'local') {
         alert('Failed to upload audio file');
@@ -722,6 +786,51 @@ const Conversation = ({
       </div>
     </div>
   );
-};
 
-export default Conversation;
+  // Add test functions to window for debugging
+  React.useEffect(() => {
+    window.testUpload = () => {
+      console.log('🧪 Testing upload function...');
+      const testBlob = new Blob(['test audio data'], { type: 'audio/wav' });
+      uploadAudioFile(testBlob, 'test');
+    };
+
+    window.testRecording = async () => {
+      console.log('🧪 Testing recording function...');
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const recorder = new MediaRecorder(stream, { mimeType: 'audio/wav' });
+        const chunks = [];
+        
+        recorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            chunks.push(event.data);
+          }
+        };
+        
+        recorder.onstop = async () => {
+          const blob = new Blob(chunks, { type: 'audio/wav' });
+          console.log('🧪 Test recording blob created:', { size: blob.size, type: blob.type });
+          await uploadAudioFile(blob, 'test-recording');
+        };
+        
+        recorder.start();
+        console.log('🧪 Test recording started...');
+        
+        setTimeout(() => {
+          recorder.stop();
+          stream.getTracks().forEach(track => track.stop());
+          console.log('🧪 Test recording stopped...');
+        }, 3000);
+        
+      } catch (error) {
+        console.error('🧪 Test recording failed:', error);
+      }
+    };
+
+    return () => {
+      delete window.testUpload;
+      delete window.testRecording;
+    };
+  }, []);
+};
