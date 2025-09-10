@@ -90,6 +90,53 @@ const Conversation = ({
     }
   }, [conversation?.isRecording, isRecording]);
 
+  // Add test functions to window for debugging
+  useEffect(() => {
+    window.testUpload = () => {
+      console.log('🧪 Testing upload function...');
+      const testBlob = new Blob(['test audio data'], { type: 'audio/wav' });
+      uploadAudioFile(testBlob, 'test');
+    };
+
+    window.testRecording = async () => {
+      console.log('🧪 Testing recording function...');
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const recorder = new MediaRecorder(stream, { mimeType: 'audio/wav' });
+        const chunks = [];
+        
+        recorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            chunks.push(event.data);
+          }
+        };
+        
+        recorder.onstop = async () => {
+          const blob = new Blob(chunks, { type: 'audio/wav' });
+          console.log('🧪 Test recording blob created:', { size: blob.size, type: blob.type });
+          await uploadAudioFile(blob, 'test-recording');
+        };
+        
+        recorder.start();
+        console.log('🧪 Test recording started...');
+        
+        setTimeout(() => {
+          recorder.stop();
+          stream.getTracks().forEach(track => track.stop());
+          console.log('🧪 Test recording stopped...');
+        }, 3000);
+        
+      } catch (error) {
+        console.error('🧪 Test recording failed:', error);
+      }
+    };
+
+    return () => {
+      delete window.testUpload;
+      delete window.testRecording;
+    };
+  }, []);
+
   const initializeAgora = async () => {
     try {
       console.log('Initializing Agora with token:', conversation.token ? 'Valid token' : 'No token');
@@ -786,53 +833,6 @@ const Conversation = ({
       </div>
     </div>
   );
-
-  // Add test functions to window for debugging
-  React.useEffect(() => {
-    window.testUpload = () => {
-      console.log('🧪 Testing upload function...');
-      const testBlob = new Blob(['test audio data'], { type: 'audio/wav' });
-      uploadAudioFile(testBlob, 'test');
-    };
-
-    window.testRecording = async () => {
-      console.log('🧪 Testing recording function...');
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const recorder = new MediaRecorder(stream, { mimeType: 'audio/wav' });
-        const chunks = [];
-        
-        recorder.ondataavailable = (event) => {
-          if (event.data.size > 0) {
-            chunks.push(event.data);
-          }
-        };
-        
-        recorder.onstop = async () => {
-          const blob = new Blob(chunks, { type: 'audio/wav' });
-          console.log('🧪 Test recording blob created:', { size: blob.size, type: blob.type });
-          await uploadAudioFile(blob, 'test-recording');
-        };
-        
-        recorder.start();
-        console.log('🧪 Test recording started...');
-        
-        setTimeout(() => {
-          recorder.stop();
-          stream.getTracks().forEach(track => track.stop());
-          console.log('🧪 Test recording stopped...');
-        }, 3000);
-        
-      } catch (error) {
-        console.error('🧪 Test recording failed:', error);
-      }
-    };
-
-    return () => {
-      delete window.testUpload;
-      delete window.testRecording;
-    };
-  }, []);
 };
 
 export default Conversation;
